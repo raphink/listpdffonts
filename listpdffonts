@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# Parse options
+RANGE=0
+GREP=0
+while getopts ":ap:f:l:g:h" option; do
+   case $option in
+      a)
+         RANGE=1
+         ;;
+      p)
+         RANGE=1
+         STARTPAGE=$OPTARG
+         ENDPAGE=$STARTPAGE
+         ;;
+      f)
+         RANGE=1
+         STARTPAGE=$OPTARG
+         ;;
+      l)
+         RANGE=1
+         ENDPAGE=$OPTARG
+         ;;
+      g)
+         GREP=1
+         KEYWORD=$OPTARG
+         ;;
+      h)
+         echo "Usage: $0 [-a][-p <page>][-f <page>][-l <page>][-g <expression>] <file.pdf>"
+         echo
+         echo "   -a : List fonts on each page individually."
+         echo "   -p : List fonts on a specific page."
+         echo "   -f : List fonts starting on given page. -f 1 is equivalent to -a."
+         echo "   -l : List fonts ending on given page."
+         echo "   -g : Grep a font name and show matching pages."
+         exit 0
+         ;;
+      *)
+         echo "Unknown option $option"
+         exit 1
+         ;;
+  esac
+done
+
+shift $(($OPTIND - 1))
+PDF="$1"
+
+if [ -z "$PDF" ]; then
+   echo "E: You must provide a PDF file"
+   exit 1
+fi
+
+PAGES=$(pdfinfo $PDF | awk '/^Pages:/ { print $2 }')
+
+
+if [ $RANGE -eq 1 ]; then
+   for p in $(seq ${STARTPAGE:-1} ${ENDPAGE:-$PAGES}); do
+      echo "== Fonts on page $p/$PAGES =="
+      pdffonts -f $p -l $p $PDF
+   done
+elif [ $GREP -eq 1 ]; then
+   FOUND=""
+   for p in $(seq ${STARTPAGE:-1} ${ENDPAGE:-$PAGES}); do
+      pdffonts -f $p -l $p $PDF | grep -q "^${KEYWORD} " && \
+         FOUND="$FOUND $p"
+   done
+   if [[ -n $FOUND ]]; then
+      echo "The font $KEYWORD was found on the following pages:$FOUND"
+   else
+      echo "The font $KEYWORD was not found"
+   fi
+else
+   pdffonts $PDF
+fi
