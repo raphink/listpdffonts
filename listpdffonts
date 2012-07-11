@@ -60,14 +60,17 @@ if [ $RANGE -eq 1 ]; then
    done
 elif [ $GREP -eq 1 ]; then
    FOUND=""
-   for p in $(seq ${STARTPAGE:-1} ${ENDPAGE:-$PAGES}); do
-      pdffonts -f $p -l $p $PDF | grep -q "^${KEYWORD} " && \
-         FOUND="$FOUND $p"
+   for font in $(pdffonts $PDF | sed -n "s@^\(\([A-Z]\++\)\?${KEYWORD}\) .*@\1@p" | awk '{print $1}'); do
+      FOUND="$FOUND $font"
+      found=""
+      for p in $(seq ${STARTPAGE:-1} ${ENDPAGE:-$PAGES}); do
+         pdffonts -f $p -l $p $PDF | grep -q "^${font} " && \
+            found="$found $p"
+      done
+      echo "The font $font was found on the following pages:$found"
    done
-   if [[ -n $FOUND ]]; then
-      echo "The font $KEYWORD was found on the following pages:$FOUND"
-   else
-      echo "The font $KEYWORD was not found"
+   if [[ -z $FOUND ]]; then
+      echo "No font found for expression $KEYWORD"
    fi
 else
    pdffonts $PDF
